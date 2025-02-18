@@ -21,8 +21,13 @@ public class Main {
 
         FiniteAutomaton automaton = grammar.toFiniteAutomaton();
 
-        String testString = "cIbJ";
-        System.out.println("Does \"" + testString + "\" belong to the language? " +
-                automaton.stringBelongToLanguage(testString));
+        System.out.println();
+        String testString1 = "cIbJ";
+        System.out.println("Does \"" + testString1 + "\" belong to the language? " +
+                automaton.stringBelongToLanguage(testString1));
+
+        String testString2 = "cem";
+        System.out.println("Does \"" + testString2 + "\" belong to the language? " +
+                automaton.stringBelongToLanguage(testString2));
     }
 }
