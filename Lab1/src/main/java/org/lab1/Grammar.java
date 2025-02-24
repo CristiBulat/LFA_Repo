@@ -40,8 +40,19 @@ class Grammar {
         return new FiniteAutomaton(this);
     }
 
-    public Set<String> getNonTerminals() { return nonTerminals; }
-    public Set<String> getTerminals() { return terminals; }
-    public Map<String, List<String>> getProductionRules() { return productionRules; }
-    public String getStartSymbol() { return startSymbol; }
+    public Set<String> getNonTerminals() {
+        return nonTerminals;
+    }
+
+    public Set<String> getTerminals() {
+        return terminals;
+    }
+
+    public Map<String, List<String>> getProductionRules() {
+        return productionRules;
+    }
+
+    public String getStartSymbol() {
+        return startSymbol;
+    }
 }

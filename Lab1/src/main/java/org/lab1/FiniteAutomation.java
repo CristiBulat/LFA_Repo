@@ -5,7 +5,7 @@ import java.util.stream.Collectors;
 class FiniteAutomaton {
     private Set<String> states;
     private Set<Character> alphabet;
-    private Map<String, Map<Character, Set<String>>> transitions;  // One input can lead to multiple states
+    private Map<String, Map<Character, Set<String>>> transitions;
     private String initialState;
     private Set<String> finalStates;
 

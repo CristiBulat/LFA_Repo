@@ -54,7 +54,38 @@ The `Grammar` class represents the given grammar with:
 - **Production rules (P)**
 - **Start symbol (S)**
 
-A method generates five valid strings based on the production rules.
+#### Terminals and Non-Terminals:
+The sets of terminals (`V_t`) and non-terminals (`V_n`) are stored as `Set<String>`. This ensures that each symbol appears only once, which is useful for checking and processing unique symbols.
+```java
+Set<String> nonTerminals = new HashSet<>();
+Set<String> terminals = new HashSet<>();
+```
+
+#### HashMap Usage (productionRules):
+In the `Grammar` class, the `productionRules` `HashMap` is used to store the production rules of the grammar.
+The key in this map is a non-terminal symbol (e.g., "S", "I"), and the value is a list of possible production strings (e.g., ["cI", "aS"]).
+```java
+HashMap<String, List<String>> productionRules = new HashMap<>();
+productionRules.put("S", Arrays.asList("cI", "aS"));
+```
+
+
+#### Random String Generation:
+The `generateString()` method uses the `productionRules` `HashMap` to replace non-terminal symbols in the `startSymbol` with their corresponding production rules.
+This process continues until no more non-terminals are left to replace, ensuring that a valid string is generated according to the grammar.
+```java
+for (String nonTerminal : nonTerminals) {
+        if (result.toString().contains(nonTerminal)) {
+List<String> productions = productionRules.get(nonTerminal);
+String chosenProduction = productions.get(random.nextInt(productions.size()));
+int index = result.indexOf(nonTerminal);
+                result.replace(index, index + nonTerminal.length(), chosenProduction);
+replaced = true;
+        break;
+        }
+}
+```
+
 
 ### FiniteAutomaton Class
 
@@ -66,197 +97,34 @@ The `FiniteAutomaton` class represents the equivalent finite automaton with:
 - **Initial state (q₀)**
 - **Final states (F)**
 
-A method verifies whether a given string is valid according to the automaton.
+#### States (Q):
+The `states` set represents the states in the finite automaton. Each state corresponds to a non-terminal symbol in the grammar.
+The initial state is the `startSymbol` of the grammar, and transitions are made based on production rules.
+```java
+Set<String> states = new HashSet<>(grammar.getNonTerminals());
+```
+
+#### Alphabet (Σ):
+The `alphabet` set contains the terminal symbols of the grammar, which are the input symbols for the finite automaton.
+This set is constructed by extracting the single-character terminal symbols from the grammar.
+```java
+Set<Character> alphabet = grammar.getTerminals().stream()
+        .filter(s -> s.length() == 1)
+        .map(s -> s.charAt(0))
+        .collect(Collectors.toSet());
+```
+
+#### Transition Function (δ):
+The `transitions` `HashMap` stores the transition function, where the key is a state (non-terminal) and the value is another `HashMap` that maps input symbols (characters from the alphabet) to the resulting set of next states.
+```java
+HashMap<String, HashMap<Character, Set<String>>> transitions = new HashMap<>();
+```
 
 ---
 
-## Code Snippets
-
-### Grammar Class
-
-```java
-class Grammar {
-    private Set<String> nonTerminals;
-    private Set<String> terminals;
-    private Map<String, List<String>> productionRules;
-    private String startSymbol;
-
-    public Grammar(Set<String> V_n, Set<String> V_t, Map<String, List<String>> P, String S) {
-        this.nonTerminals = V_n;
-        this.terminals = V_t;
-        this.productionRules = P;
-        this.startSymbol = S;
-    }
-
-    public String generateString() {
-        Random random = new Random();
-        StringBuilder result = new StringBuilder(startSymbol);
-
-        while (true) {
-            boolean replaced = false;
-            for (String nonTerminal : nonTerminals) {
-                if (result.toString().contains(nonTerminal)) {
-                    List<String> productions = productionRules.get(nonTerminal);
-                    String chosenProduction = productions.get(random.nextInt(productions.size()));
-                    int index = result.indexOf(nonTerminal);
-                    result.replace(index, index + nonTerminal.length(), chosenProduction);
-                    replaced = true;
-                    break;
-                }
-            }
-            if (!replaced) break;
-        }
-        return result.toString();
-    }
-
-    public FiniteAutomaton toFiniteAutomaton() {
-        return new FiniteAutomaton(this);
-    }
-
-    public Set<String> getNonTerminals() { return nonTerminals; }
-    public Set<String> getTerminals() { return terminals; }
-    public Map<String, List<String>> getProductionRules() { return productionRules; }
-    public String getStartSymbol() { return startSymbol; }
-}
-```
-
-### FiniteAutomaton Class
-
-```java
-class FiniteAutomaton {
-    private Set<String> states;
-    private Set<Character> alphabet;
-    private Map<String, Map<Character, Set<String>>> transitions;  // One input can lead to multiple states
-    private String initialState;
-    private Set<String> finalStates;
-
-    public FiniteAutomaton(Grammar grammar) {
-        this.states = new HashSet<>(grammar.getNonTerminals());
-        this.alphabet = new HashSet<>(grammar.getTerminals().stream()
-                .filter(s -> s.length() == 1)
-                .map(s -> s.charAt(0))
-                .collect(Collectors.toSet()));
-        this.transitions = new HashMap<>();
-        this.finalStates = new HashSet<>();
-
-        // Initialize transitions
-        for (String state : states) {
-            transitions.put(state, new HashMap<>());
-        }
-
-        // Process production rules to build transitions
-        for (String nonTerminal : grammar.getNonTerminals()) {
-            for (String production : grammar.getProductionRules().get(nonTerminal)) {
-                // If production is epsilon or empty string, make this a final state
-                if (production.isEmpty() || production.equals("ε")) {
-                    finalStates.add(nonTerminal);
-                    continue;
-                }
-
-                // Check if production starts with a terminal
-                if (production.length() >= 1) {
-                    char firstChar = production.charAt(0);
-
-                    // Make sure the character is in the alphabet (is a terminal)
-                    if (grammar.getTerminals().contains(String.valueOf(firstChar))) {
-                        String remainingState = production.length() > 1 ? production.substring(1) : "";
-
-                        // If there's nothing after the terminal, it's an accepting state
-                        if (remainingState.isEmpty()) {
-                            // Create a special accepting state if needed
-                            String acceptState = nonTerminal + "_accept";
-                            states.add(acceptState);
-                            finalStates.add(acceptState);
-
-                            // Add transition
-                            transitions.get(nonTerminal)
-                                    .computeIfAbsent(firstChar, k -> new HashSet<>())
-                                    .add(acceptState);
-                        } else {
-                            // Add transition to the remaining state
-                            transitions.get(nonTerminal)
-                                    .computeIfAbsent(firstChar, k -> new HashSet<>())
-                                    .add(remainingState);
-                        }
-                    }
-                }
-            }
-        }
-
-        this.initialState = grammar.getStartSymbol();
-    }
-
-    public boolean stringBelongToLanguage(String input) {
-        Set<String> currentStates = new HashSet<>();
-        currentStates.add(initialState);
-
-        // Process each symbol in the input
-        for (char symbol : input.toCharArray()) {
-            Set<String> nextStates = new HashSet<>();
-
-            // For each current state, find all possible next states
-            for (String state : currentStates) {
-                if (transitions.containsKey(state) &&
-                        transitions.get(state).containsKey(symbol)) {
-                    nextStates.addAll(transitions.get(state).get(symbol));
-                }
-            }
-
-            if (nextStates.isEmpty()) {
-                return false; // No valid transitions
-            }
-            currentStates = nextStates;
-        }
-
-        // Check if we ended in any final state
-        for (String state : currentStates) {
-            if (finalStates.contains(state)) {
-                return true;
-            }
-        }
-        return false;
-    }
-}
-```
-
-### Main Execution
-
-```java
-public class Main {
-    public static void main(String[] args) {
-        Set<String> V_n = Set.of("S", "I", "J", "K");
-        Set<String> V_t = Set.of("a", "b", "c", "e", "n", "f", "m");
-        Map<String, List<String>> P = new HashMap<>();
-        P.put("S", List.of("cI"));
-        P.put("I", List.of("bJ", "fI", "eK", "e"));
-        P.put("J", List.of("nJ", "cS"));
-        P.put("K", List.of("nK", "m"));
-
-        String S = "S";
-        Grammar grammar = new Grammar(V_n, V_t, P, S);
-
-        System.out.println("Generated strings:");
-        for (int i = 0; i < 5; i++) {
-            System.out.println(grammar.generateString());
-        }
-
-        FiniteAutomaton automaton = grammar.toFiniteAutomaton();
-
-        System.out.println();
-        String testString1 = "cIbJ";
-        System.out.println("Does \"" + testString1 + "\" belong to the language? " +
-                automaton.stringBelongToLanguage(testString1));
-
-        String testString2 = "cem";
-        System.out.println("Does \"" + testString2 + "\" belong to the language? " +
-                automaton.stringBelongToLanguage(testString2));
-    }
-}
-```
-
 ## Screenshots
 
-![Automaton visualization](https://via.placeholder.com/800x400?text=Automaton+Visualization)
+![image alt](https://github.com/CristiBulat/LFA_Repo/blob/laboratory1/Screenshot.png?raw=true)
 
 ## Results
 
@@ -264,6 +132,11 @@ public class Main {
 2. Generated valid strings based on the production rules.
 3. Converted the grammar into a finite automaton.
 4. Verified string acceptance using FA state transitions.
+
+## Conclusion
+
+In this laboratory, we explored the fundamental concepts of formal languages, regular grammars, and finite automata, focusing on their practical implementation. We successfully implemented a Grammar class to represent a formal grammar, enabling the generation of valid strings according to specified production rules. The conversion of this grammar into a finite automaton (FA) was achieved by treating non-terminal symbols as states, defining transitions based on production rules, and incorporating terminal symbols into the FA's alphabet.
+Through this process, we demonstrated the ability to generate strings that belong to a language defined by the grammar and verified their validity by simulating FA state transitions. The implementation highlighted the relationship between formal grammars and finite automata, reinforcing the theoretical principles covered in the course. Ultimately, this lab provided a hands-on experience with constructing and manipulating formal languages and finite automata, which are essential topics in computational theory.
 
 ## References
 
