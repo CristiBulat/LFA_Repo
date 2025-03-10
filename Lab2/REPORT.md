@@ -57,42 +57,13 @@ To convert a finite automaton to a regular grammar:
 
 ## Implementation Description
 
-### Grammar Class
+### Grammar Classification Method
 
-The `Grammar` class represents a formal grammar with:
-
-- **Non-terminal symbols (VN)**
-- **Terminal symbols (VT)**
-- **Production rules (P)**
-- **Start symbol (S)**
+The classifyGrammar() method implements a hierarchical analysis to categorize the grammar according to the Chomsky hierarchy, checking from most restrictive (Type 3) to least restrictive (Type 0). The method systematically evaluates production rules to determine the grammar's structural constraints. For regular grammars (Type 3), it verifies both right-linear form (A → aB or A → a) and left-linear form (A → Ba or A → a). For context-free grammars (Type 2), it ensures all left-hand sides consist of single non-terminals. For context-sensitive grammars (Type 1), it confirms that right-hand sides are never shorter than left-hand sides, with the special exception allowing S → ε if S doesn't appear on any right-hand side. The classification proceeds through these checks sequentially, returning the most restrictive type that fits the grammar's structure.
 
 ```java
-class Grammar {
-    private Set<String> nonTerminalSymbols;
-    private Set<String> terminalSymbols;
-    private String startSymbol;
-    private Map<String, List<String>> productions;
 
-    public Grammar(Set<String> nonTerminalSymbols, Set<String> terminalSymbols, 
-                  String startSymbol, Map<String, List<String>> productions) {
-        this.nonTerminalSymbols = nonTerminalSymbols;
-        this.terminalSymbols = terminalSymbols;
-        this.startSymbol = startSymbol;
-        this.productions = productions;
-    }
-}
-```
-
-#### Grammar Classification Method
-
-The `classifyGrammar()` method determines the grammar type according to the Chomsky hierarchy:
-
-```java
-public String classifyGrammar() {
-    // Check for Type 3 (Regular Grammar)
-    boolean isRightLinear = true;
-    boolean isLeftLinear = true;
-
+    //Check for type 3
     for (String nonTerminal : productions.keySet()) {
         List<String> rules = productions.get(nonTerminal);
         for (String rule : rules) {
@@ -112,11 +83,7 @@ public String classifyGrammar() {
             }
         }
     }
-
-    if (isRightLinear || isLeftLinear) {
-        return "Type 3 (Regular Grammar)";
-    }
-
+    
     // Check for Type 2 (Context-Free Grammar)
     boolean isContextFree = true;
     for (String nonTerminal : productions.keySet()) {
@@ -126,10 +93,7 @@ public String classifyGrammar() {
             break;
         }
     }
-
-    if (isContextFree) {
-        return "Type 2 (Context-Free Grammar)";
-    }
+    
 
     // Check for Type 1 (Context-Sensitive Grammar)
     boolean isContextSensitive = true;
@@ -146,28 +110,11 @@ public String classifyGrammar() {
         if (!isContextSensitive) break;
     }
 
-    if (isContextSensitive) {
-        return "Type 1 (Context-Sensitive Grammar)";
-    }
-
-    // If none of the above, it's Type 0 (Unrestricted Grammar)
-    return "Type 0 (Unrestricted Grammar)";
-}
 ```
 
-### FiniteAutomaton Class
+### Checking if an FA is Deterministic
 
-The `FiniteAutomaton` class represents a finite automaton with:
-
-- **States (Q)**
-- **Alphabet (Sigma)**
-- **Transition function (delta)**
-- **Initial state (q₀)**
-- **Final states (F)**
-
-#### Checking if an FA is Deterministic
-
-The `isDeterministic()` method checks whether the automaton is deterministic:
+The isDeterministic() method implements a thorough analysis of the automaton's transition structure to verify deterministic behavior. For each state in the automaton, it examines all outgoing transitions for each symbol in the alphabet. The method meticulously checks if any state has multiple transitions for the same input symbol, which would violate the core deterministic property. The implementation accounts for states that might not have transitions defined for all symbols. This thorough state-by-state and symbol-by-symbol verification ensures proper classification of the automaton's deterministic nature, which is crucial for many algorithms that assume deterministic input.
 
 ```java
 public boolean isDeterministic() {
@@ -190,27 +137,12 @@ public boolean isDeterministic() {
 }
 ```
 
-#### Converting FA to Regular Grammar
+### Converting FA to Regular Grammar
 
-The `toRegularGrammar()` method converts the finite automaton to a regular grammar:
+The toRegularGrammar() method implements a systematic transformation of a finite automaton into an equivalent right-linear regular grammar. This conversion leverages the fundamental relationship between Type 3 grammars and finite automata in the Chomsky hierarchy. The method maps states to non-terminal symbols and input alphabet to terminal symbols. It processes each transition to generate appropriate production rules: for transitions to non-final states, it creates rules of the form A → aB (where A is the current state, a is the input symbol, and B is the destination state); for transitions to final states, it adds both A → aB and A → a productions. Additionally, if the initial state is also a final state, an epsilon production is added for it. This comprehensive transformation ensures that the resulting grammar generates exactly the same language recognized by the original automaton.
 
 ```java
-public Grammar toRegularGrammar() {
-    Set<String> nonTerminals = new HashSet<>();
-    Set<String> terminals = new HashSet<>();
-    Map<String, List<String>> productions = new HashMap<>();
-    
-    // States become non-terminals
-    for (String state : states) {
-        nonTerminals.add(state);
-        productions.put(state, new ArrayList<>());
-    }
-    
-    // Alphabet becomes terminals
-    for (Character symbol : alphabet) {
-        terminals.add(symbol.toString());
-    }
-    
+
     // Process transitions to create productions
     for (String fromState : transitions.keySet()) {
         Map<Character, Set<String>> stateTransitions = transitions.get(fromState);
@@ -229,42 +161,15 @@ public Grammar toRegularGrammar() {
             }
         }
     }
-    
-    // Add epsilon production for initial state if it's final
-    if (finalStates.contains(initialState)) {
-        productions.get(initialState).add("");  // Epsilon
-    }
-    
-    return new Grammar(nonTerminals, terminals, initialState, productions);
-}
+
 ```
 
 #### Converting NDFA to DFA
 
-The `toDFA()` method implements the conversion from NDFA to DFA:
+The toDFA() method implements the powerset construction algorithm to convert a non-deterministic finite automaton (NDFA) to its equivalent deterministic finite automaton (DFA). This critical transformation creates compound states in the DFA that correspond to sets of states in the NDFA. The implementation maintains a queue of state sets to process and a mapping between composite states and their constituent NDFA states. For each compound state, it determines if it should be marked as accepting (if any constituent state is accepting) and systematically computes transitions for each input symbol by collecting all possible next states from the original NDFA. The method handles the exponential growth of states efficiently using HashSets, ensuring proper state management during the transformation. This conversion is fundamental for many practical applications of automata theory, as many algorithms require deterministic input despite non-deterministic automata often being more intuitive to design.
 
 ```java
-public FiniteAutomaton toDFA() {
-    // New DFA components
-    Set<String> newStates = new HashSet<>();
-    Map<String, Map<Character, Set<String>>> newTransitions = new HashMap<>();
-    Set<String> newFinalStates = new HashSet<>();
-    
-    // Queue for processing new compound states
-    Queue<Set<String>> stateQueue = new LinkedList<>();
-    // Map to track the compound states we've already processed
-    Map<Set<String>, String> stateNameMap = new HashMap<>();
-    
-    // Start with the initial state
-    Set<String> initialStateSet = new HashSet<>();
-    initialStateSet.add(initialState);
-    stateQueue.add(initialStateSet);
-    
-    String newInitialState = setToStateName(initialStateSet);
-    newStates.add(newInitialState);
-    stateNameMap.put(initialStateSet, newInitialState);
-    
-    // Process all compound states in the queue
+
     while (!stateQueue.isEmpty()) {
         Set<String> currentStateSet = stateQueue.poll();
         String currentCompoundState = stateNameMap.get(currentStateSet);
@@ -280,120 +185,7 @@ public FiniteAutomaton toDFA() {
         // Initialize transitions for this compound state
         newTransitions.put(currentCompoundState, new HashMap<>());
         
-        // Process each symbol in the alphabet
-        for (Character symbol : alphabet) {
-            Set<String> nextStates = new HashSet<>();
-            
-            // Collect all possible next states for this symbol
-            for (String state : currentStateSet) {
-                if (transitions.containsKey(state) && 
-                    transitions.get(state).containsKey(symbol)) {
-                    nextStates.addAll(transitions.get(state).get(symbol));
-                }
-            }
-            
-            // Skip if no transitions
-            if (nextStates.isEmpty()) {
-                continue;
-            }
-            
-            // Create a name for this new compound state
-            String nextCompoundState;
-            if (!stateNameMap.containsKey(nextStates)) {
-                nextCompoundState = setToStateName(nextStates);
-                stateNameMap.put(nextStates, nextCompoundState);
-                newStates.add(nextCompoundState);
-                stateQueue.add(nextStates);  // Process this new state later
-            } else {
-                nextCompoundState = stateNameMap.get(nextStates);
-            }
-            
-            // Add the transition
-            if (!newTransitions.get(currentCompoundState).containsKey(symbol)) {
-                newTransitions.get(currentCompoundState).put(symbol, new HashSet<>());
-            }
-            newTransitions.get(currentCompoundState).get(symbol).add(nextCompoundState);
-        }
     }
-    
-    return new FiniteAutomaton(newStates, alphabet, newTransitions, newInitialState, newFinalStates);
-}
-```
-
-## Main Class and Implementation
-
-The `Main` class demonstrates the implementation by:
-
-1. Defining a finite automaton
-2. Checking if it's deterministic
-3. Converting the FA to a regular grammar
-4. Classifying the grammar
-5. Converting NDFA to DFA (if necessary)
-
-```java
-public static void main(String[] args) {
-    // Defining the finite automaton
-    Set<String> states = new HashSet<>(Arrays.asList("q0", "q1", "q2", "q3", "q4"));
-    Set<Character> alphabet = new HashSet<>(Arrays.asList('a', 'b'));
-    String initialState = "q0";
-    Set<String> finalStates = new HashSet<>(Arrays.asList("q4"));
-    
-    // Define transitions
-    Map<String, Map<Character, Set<String>>> transitions = new HashMap<>();
-    
-    // Initialize transition maps for each state
-    for (String state : states) {
-        transitions.put(state, new HashMap<>());
-    }
-    
-    // Add transitions
-    // δ(q0,a) = q1
-    addTransition(transitions, "q0", 'a', "q1");
-    
-    // δ(q1,b) = q1
-    addTransition(transitions, "q1", 'b', "q1");
-    
-    // δ(q1,b) = q2 (This makes it non-deterministic)
-    addTransition(transitions, "q1", 'b', "q2");
-    
-    // δ(q2,b) = q3
-    addTransition(transitions, "q2", 'b', "q3");
-    
-    // δ(q3,a) = q1
-    addTransition(transitions, "q3", 'a', "q1");
-    
-    // δ(q2,a) = q4
-    addTransition(transitions, "q2", 'a', "q4");
-    
-    // Create the finite automaton
-    FiniteAutomaton fa = new FiniteAutomaton(states, alphabet, transitions, initialState, finalStates);
-    
-    // Print the automaton
-    System.out.println(fa);
-    
-    // Check if it's deterministic
-    boolean isDeterministic = fa.isDeterministic();
-    System.out.println("Is the automaton deterministic? " + isDeterministic);
-    
-    // Convert FA to regular grammar
-    Grammar regularGrammar = fa.toRegularGrammar();
-    System.out.println("\nConverted to Regular Grammar:");
-    System.out.println(regularGrammar);
-    
-    // Classify the grammar
-    String grammarType = regularGrammar.classifyGrammar();
-    System.out.println("Grammar Classification: " + grammarType);
-    
-    // Convert NDFA to DFA
-    if (!isDeterministic) {
-        System.out.println("\nConverting NDFA to DFA:");
-        FiniteAutomaton dfa = fa.toDFA();
-        System.out.println(dfa);
-        
-        // Verify that the DFA is indeed deterministic
-        System.out.println("Is the converted DFA deterministic? " + dfa.isDeterministic());
-    }
-}
 ```
 
 ## Results
