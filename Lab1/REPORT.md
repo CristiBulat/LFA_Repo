@@ -1,6 +1,6 @@
 # Introduction to Formal Languages, Regular Grammars, and Finite Automata
 
-### **Course:** Formal Languages & Finite Automata  
+### **Course:** Formal Languages
 ### **Author:** Bulat Cristian
 
 ## Theory
