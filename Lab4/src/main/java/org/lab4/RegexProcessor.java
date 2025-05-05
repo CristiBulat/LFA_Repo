@@ -73,13 +73,13 @@ public class RegexProcessor {
         }
 
         // Handle Kleene plus (+)
-        Matcher plusMatcher = Pattern.compile("(.)\\+").matcher(regex);
-        if (plusMatcher.find()) {
-            char character = plusMatcher.group(1).charAt(0);
-            // Try 1 to 5 repetitions
+        Matcher dynamicRepMatcher = Pattern.compile("(.)\\^\\+").matcher(regex);
+        if (dynamicRepMatcher.find()) {
+            char character = dynamicRepMatcher.group(1).charAt(0);
+            // Try 1 to 5 repetitions for the + case
             for (int i = 1; i <= 5; i++) {
                 String repeatedChar = String.valueOf(character).repeat(i);
-                String remainingRegex = regex.replaceFirst(Pattern.quote(character + "+"), "");
+                String remainingRegex = regex.replaceFirst(Pattern.quote(character + "^+"), "");
                 processDynamicRegex(remainingRegex, currentString + repeatedChar, combinations);
             }
             return;
